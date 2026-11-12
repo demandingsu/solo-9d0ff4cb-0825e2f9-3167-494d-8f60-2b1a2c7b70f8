@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>施工路段桩号表样例</title>
+<style>
+body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; margin: 24px; color: #222; }
+h1 { font-size: 20px; } table { border-collapse: collapse; width: 860px; margin-top: 12px; }
+th, td { border: 1px solid #999; padding: 6px 10px; text-align: left; font-size: 14px; }
+th { background: #f0f3f7; }
+.pager a { margin-right: 12px; } ul { line-height: 1.8; }
+</style>
+</head>
+<body>
+<h1>施工路段桩号表样例（离线）</h1>
+<p>供 <code>POST /api/station-check</code> 使用，均为同站相对链接、无外部资源。</p>
+<ul>
+<li><a href="page_1.html">主场景：LX-2026-A</a>（目标 K0+000~K3+500；含重复、冲突、重叠、缺段）</li>
+<li><a href="clean/page_1.html">完整覆盖：LX-2026-B</a>（目标 K0+000~K2+000）</li>
+<li><a href="broken/page_1.html">读取失败：LX-2026-D</a>（第 2 页缺失；目标 K0+000~K1+500）</li>
+</ul>
+</body>
+</html>

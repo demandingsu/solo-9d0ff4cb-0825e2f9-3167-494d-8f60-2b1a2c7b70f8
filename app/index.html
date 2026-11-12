@@ -17,14 +17,19 @@ li { margin: 6px 0; }
   <li><code>GET /api/tenders</code> — 各标段当前投标截止时间汇总（冲突标段 status=conflict）</li>
   <li><code>GET /api/tenders/{招标编号}</code> — 单标段有效公告链、失效原因与来源链接</li>
   <li><code>GET /api/raw</code> — 最近一次采集的原始公告数据</li>
+  <li><code>POST /api/station-check</code> — 桩号核查：输入线路编号、起止桩号与路段目录 URL，报告缺段/重叠及来源</li>
   <li><code>GET /docs</code> — Swagger 交互文档</li>
   <li><a href="/sample/index.html">离线分页 HTML 公告样例</a>（<code>/sample</code>，纯静态无外部依赖）</li>
+  <li><a href="/sample/segments/index.html">离线分页路段表样例</a>（桩号核查用）</li>
 </ul>
 <h2>典型流程</h2>
 <ol>
   <li>打开 <a href="/sample/index.html">样例目录</a>，复制目录第一页 URL</li>
   <li>调用 <code>POST /api/collect</code> 采集</li>
   <li>调用 <code>GET /api/tenders</code> 核对截止时间；冲突标段进入详情查看冲突公告来源</li>
+  <li>桩号核查：调用 <code>POST /api/station-check</code>，例如
+    <code>{"lineCode":"LX-2026-A","startStation":"K0+000","endStation":"K3+500",
+    "catalogUrl":"http://localhost:8000/sample/segments/page_1.html"}</code></li>
 </ol>
 </body>
 </html>

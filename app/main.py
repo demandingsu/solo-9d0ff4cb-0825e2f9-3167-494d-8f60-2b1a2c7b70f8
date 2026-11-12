@@ -12,15 +12,24 @@ from .models import (
     CollectRequest,
     CollectResponse,
     CollectResult,
+    PageFetchError,
+    SegmentCheckRequest,
+    SegmentCheckResponse,
     TenderDetail,
     TenderSummary,
 )
+from .segment_check import analyze
+from .segment_crawler import SegmentCrawler
+from .stations import StationError, parse_station
 from .storage import store
 
 app = FastAPI(
     title="市政工程投标公告采集 API",
-    version="1.0.0",
-    description="沿分页采集公告详情，按招标编号归集原公告/改期/撤回，输出有效截止时间链。",
+    version="1.1.0",
+    description=(
+        "沿分页采集公告详情，按招标编号归集原公告/改期/撤回，输出有效截止时间链；"
+        "另提供沿同站分页读取路段表的桩号核查接口。"
+    ),
 )
 
 
@@ -102,6 +111,61 @@ async def raw_announcements() -> dict:
     """最近一次采集的原始解析结果（便于核对，不做链路口算）。"""
     result = await _require_data()
     return result.model_dump()
+
+
+# ---- 桩号核查 ----
+@app.post("/api/station-check", response_model=SegmentCheckResponse)
+async def station_check(req: SegmentCheckRequest) -> SegmentCheckResponse:
+    """输入线路编号、核查起止桩号与明细目录 URL，报告缺段、重叠段及来源。
+
+    - 沿同站分页读取全部路段表；单页读取失败时记录失败并保留已读页。
+    - K12+345 统一换算为米；同编号同区间只计一次；同编号不同区间标为冲突，
+      冲突记录不用于证明覆盖。
+    - 相邻路段共用端点不算重叠。
+    - 页面读取失败或编号冲突时，仍报告可靠记录证实的重叠；剩余空档与
+      完整覆盖不作为确定结论（verdict=indeterminate）。
+    """
+    try:
+        target_start = parse_station(req.start_station)
+        target_end = parse_station(req.end_station)
+    except StationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if target_start >= target_end:
+        raise HTTPException(
+            status_code=422,
+            detail="核查起始桩号必须小于终止桩号",
+        )
+
+    crawl = await SegmentCrawler().collect(str(req.catalog_url), req.line_code)
+    outcome = analyze(
+        crawl.records,
+        target_start=target_start,
+        target_end=target_end,
+        complete=not crawl.failed_pages,
+    )
+    return SegmentCheckResponse(
+        line_code=req.line_code,
+        start_station=req.start_station,
+        end_station=req.end_station,
+        catalog_url=str(req.catalog_url),
+        collected_at=SegmentCrawler.now_iso(),
+        total_pages=crawl.total_pages,
+        fetched_pages=crawl.fetched_pages,
+        failed_pages=[
+            PageFetchError(page_url=e.page_url, error=e.error)
+            for e in crawl.failed_pages
+        ],
+        complete=not crawl.failed_pages,
+        verdict=outcome["verdict"],
+        fully_covered=outcome["fully_covered"],
+        segments=[r.to_source() for r in outcome["reliable"]],
+        duplicates=outcome["duplicates"],
+        conflicts=outcome["conflicts"],
+        gaps=outcome["gaps"],
+        uncovered_ranges=outcome["uncovered_ranges"],
+        overlaps=outcome["overlaps"],
+        notes=outcome["notes"],
+    )
 
 
 # ---- 离线样例站点 ----
